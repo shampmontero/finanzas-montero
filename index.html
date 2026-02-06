@@ -1,0 +1,563 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Finanzas Familiares - Abel Montero</title>
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#1a73e8">
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
+  
+  <!-- <style>
+  body { 
+  background-color: red !important; 
+  color: white !important;
+  }
+  </style> -->
+   <link rel="stylesheet" href="estilos.css">
+</head>
+<body data-theme="light">
+  
+  
+  
+  <dialog id="loginModal" style="padding: 20px; border-radius: 15px; border: none; box-shadow: 0 5px 15px rgba(0,0,0,0.3);">
+    <form method="dialog" id="loginForm" style="display: flex; flex-direction: column; gap: 10px; width: 250px;">
+        <h2 style="margin-top: 0; color: #1a73e8;">Bienvenido</h2>
+        <p>Introduce tus credenciales para acceder a las finanzas de la familia.</p>
+        
+        <label for="nombreInput">Tu Nombre:</label>
+        <input type="text" id="nombreInput" placeholder="Ej: Abel" required style="padding: 8px;">
+        
+        <label for="llaveInput">Llave de Familia:</label>
+        <input type="password" id="llaveInput" placeholder="Código secreto" required style="padding: 8px;">
+        
+        <button type="submit" style="background: #1a73e8; color: white; border: none; padding: 10px; border-radius: 5px; cursor: pointer;">
+            Entrar a la App
+        </button>
+    </form>
+</dialog>
+
+  
+  
+
+  <button class="theme-toggle" onclick="toggleTheme()" id="theme-btn" aria-label="Cambiar tema">🌓</button>
+
+  <div id="tab-diario" class="tab-content active" role="region" aria-label="Diario">
+    <div class="header-grid">
+      <div class="card bg-green" aria-live="polite"><small>EN MANO</small><h2 id="total-mano">$0</h2></div>
+      <div class="card bg-blue" aria-live="polite"><small>AHORRO</small><h2 id="total-ahorro">$0</h2></div>
+    </div>
+    <div class="card">
+      <h3>Registrar</h3>
+      <label for="categoria" style="display:none">Categoría</label>
+      <select id="categoria" onchange="autoCompletar()" aria-label="Categoría">
+        <option value="Otro">➕ Otro / Varios</option>
+        <option value="Salario">💰 Salario / Ingreso</option>
+        <option value="Pago">💳 Pago General</option>
+        <option value="Comida">🛒 Comida / Súper</option>
+        <optgroup label="✨ VINCULAR A META" id="lista-categorias-metas"></optgroup>
+      </select>
+      <input type="text" id="concepto" placeholder="Concepto" aria-label="Concepto">
+      <input type="number" inputmode="decimal" id="monto" placeholder="Monto $0.00" aria-label="Monto">
+      <label style="font-size: 10px; color: var(--primary); font-weight: bold;">📅 FECHA (VACÍO = HOY):</label>
+      <input type="date" id="fecha-manual" style="border: 1px dashed var(--primary);" aria-label="Fecha">
+      <select id="tipo" onchange="toggleAho()" aria-label="Tipo">
+        <option value="gasto">Gasto (-)</option>
+        <option value="ingreso">Ingreso (+)</option>
+      </select>
+      <div id="div-aho-v13" style="display:none"><input type="number" id="aho-vol" placeholder="¿Ahorrar? $" aria-label="Ahorro voluntario"></div>
+      <button class="btn btn-main" onclick="registrar()" aria-label="Guardar transacción">GUARDAR</button>
+      <div style="display:grid; grid-template-columns: 1fr 1fr; gap:8px;">
+        <button class="btn" style="background:var(--warning); color:white;" onclick="moverDinero('ahorro_a_mano')" aria-label="Retirar de ahorro">🏧 Retirar</button>
+        <button class="btn" style="background:#00897b; color:white;" onclick="moverDinero('mano_a_ahorro')" aria-label="Mover a ahorro">💰 Invertir</button>
+      </div>
+      <button class="btn" style="background:#5f6368; color:white;" onclick="configInicial()" aria-label="Saldos iniciales">Saldos Iniciales</button>
+      <button class="btn btn-danger" onclick="reinicioTotal()" aria-label="Reiniciar todo">⚠️ REINICIAR</button>
+    </div>
+  </div>
+
+  <div id="tab-metas" class="tab-content" role="region" aria-label="Metas">
+    <div class="card">
+      <h3>🏠 Metas</h3>
+      <button class="btn" style="background:#8e24aa; color:white;" onclick="crearMeta()" aria-label="Crear meta">+ Nueva Meta</button>
+    </div>
+    <div id="lista-metas" aria-live="polite"></div>
+  </div>
+
+  <div id="tab-analisis" class="tab-content" role="region" aria-label="Análisis">
+    <div class="card">
+      <h3>📊 Gráficos</h3>
+      <select id="chart-tipo" onchange="renderChart()" aria-label="Tipo de gráfico">
+        <option value="gastos">Gastos</option>
+        <option value="ingresos">Ingresos</option>
+      </select>
+      <canvas id="chartGastos" height="200" aria-label="Gráfico de gastos e ingresos"></canvas>
+      <div id="chart-empty" style="display:none; font-size:13px; color:gray; margin-top:10px;">Sin datos para mostrar</div>
+    </div>
+  </div>
+
+  <div id="tab-archivo" class="tab-content" role="region" aria-label="Historial">
+    <div class="card">
+      <h3>🔍 Historial</h3>
+      <input type="text" id="buscador" placeholder="Buscar..." onkeyup="actualizar()" aria-label="Buscar">
+      <div style="display:grid; grid-template-columns: 1fr 1fr; gap:8px;">
+        <input type="date" id="f-desde" onchange="actualizar()" aria-label="Fecha desde">
+        <input type="date" id="f-hasta" onchange="actualizar()" aria-label="Fecha hasta">
+      </div>
+      <select id="f-tipo-mov" onchange="actualizar()" aria-label="Filtrar tipo">
+        <option value="todos">Todos</option>
+        <option value="ingreso">Ingresos</option>
+        <option value="gasto">Gastos</option>
+      </select>
+      <div style="display:grid; grid-template-columns: 1fr 1fr; gap:8px;">
+        <button class="btn" style="background:var(--secondary); color:white;" onclick="exportarCSV()" aria-label="Exportar CSV">Excel</button>
+        <button class="btn" style="background:var(--primary); color:white;" onclick="window.print()" aria-label="Imprimir">PDF</button>
+      </div>
+      <div id="contenedor-resumen" style="display: none; justify-content: space-around; padding: 8px; border: 1px dashed #1a73e8; border-radius: 10px; margin-top: 10px; background: rgba(26, 115, 232, 0.05);">
+        <div style="text-align:center;"><small>In</small><br><strong id="resumen-in" style="color:#2e7d32;">$0</strong></div>
+        <div style="text-align:center;"><small>Out</small><br><strong id="resumen-out" style="color:#d32f2f;">$0</strong></div>
+        <div style="text-align:center;"><small>Ahorro</small><br><strong id="resumen-aho" style="color:#1a73e8;">$0</strong></div>
+      </div>
+    </div>
+    <div id="historial-v13" aria-live="polite"></div>
+    <div id="footer-texto" class="footer-copy" aria-hidden="true"></div>
+  </div>
+
+  <nav class="nav-bar" role="navigation" aria-label="Navegación principal">
+    <button class="nav-item active" onclick="showTab('diario', event)" aria-label="Mostrar Diario"><span>💰</span>Diario</button>
+    <button class="nav-item" onclick="showTab('metas', event)" aria-label="Mostrar Metas"><span>🏠</span>Metas</button>
+    <button class="nav-item" onclick="showTab('analisis', event)" aria-label="Mostrar Análisis"><span>📊</span>Análisis</button>
+    <button class="nav-item" onclick="showTab('archivo', event)" aria-label="Mostrar Historial"><span>🔍</span>Historial</button>
+  </nav>
+
+  <script>
+    // NOMBRE DEFINITIVO DE LA BASE DE DATOS
+    const DB_NAME = "Finanzas_Abel_V15"; 
+    const METAS_KEY = "metas_" + DB_NAME;
+    const INFO_VERSION = `Copyright \u00A9 ${new Date().getFullYear()} Abel Montero | V15.6 🚀`;
+
+    let db = null, chartInstance = null;
+    let metas = JSON.parse(localStorage.getItem(METAS_KEY)) || [];
+
+    document.getElementById("footer-texto").innerText = INFO_VERSION;
+
+    // Tema
+    const themeBtn = document.getElementById('theme-btn');
+    if(localStorage.getItem('theme') === 'dark') { document.body.setAttribute('data-theme', 'dark'); themeBtn.innerText = '☀️'; }
+
+    function toggleTheme() {
+      const cur = document.body.getAttribute('data-theme');
+      const nuevo = cur === 'dark' ? 'light' : 'dark';
+      document.body.setAttribute('data-theme', nuevo);
+      localStorage.setItem('theme', nuevo);
+      themeBtn.innerText = nuevo === 'dark' ? '☀️' : '🌓';
+    }
+
+    // Service Worker registro seguro
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('sw.js').then(reg => {
+        console.log('ServiceWorker registrado:', reg.scope);
+      }).catch(err => {
+        console.warn('ServiceWorker no registrado:', err);
+      });
+    }
+
+    // IndexedDB open con manejo de errores
+    const request = indexedDB.open(DB_NAME, 1);
+    request.onupgradeneeded = (e) => {
+      db = e.target.result;
+      if(!db.objectStoreNames.contains("trans")) db.createObjectStore("trans", { keyPath: "id", autoIncrement: true });
+    };
+    request.onsuccess = (e) => {
+      db = e.target.result;
+      db.onerror = (ev) => console.error('IndexedDB error:', ev);
+      actualizar();
+      actualizarSelectMetas();
+    };
+    request.onerror = (e) => {
+      console.error('No se pudo abrir IndexedDB:', e);
+      alert('Advertencia: la base de datos local no está disponible. Algunas funciones no funcionarán.');
+    };
+
+    // utilidades
+    function isValidNumber(n) { return typeof n === 'number' && !isNaN(n) && isFinite(n); }
+    function escCSVField(v) {
+      if (v === null || v === undefined) return '';
+      const s = String(v).replace(/\r?\n/g, ' ');
+      if (s.includes(',') || s.includes('"') || s.includes('\n')) return '"' + s.replace(/"/g, '""') + '"';
+      return s;
+    }
+    function safeTextNode(tag, text) { const el = document.createElement(tag); el.textContent = text; return el; }
+
+    function showTab(id, ev) {
+      document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+      document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+      const tab = document.getElementById('tab-' + id);
+      if(tab) tab.classList.add('active');
+      if(ev && ev.currentTarget) ev.currentTarget.classList.add('active');
+      if(id === 'analisis') renderChart();
+      actualizar();
+    }
+
+    function toggleAho() { const el = document.getElementById("div-aho-v13"); el.style.display = document.getElementById("tipo").value === "ingreso" ? "block" : "none"; }
+    
+    function autoCompletar() { const cat = document.getElementById("categoria").value; document.getElementById("tipo").value = (cat === "Salario" ? "ingreso" : "gasto"); toggleAho(); }
+
+    function registrar() {
+      if (!db) return alert('Base de datos no disponible');
+      const conEl = document.getElementById("concepto");
+      const monEl = document.getElementById("monto");
+      const ahoEl = document.getElementById("aho-vol");
+      const catEl = document.getElementById("categoria");
+      const tipEl = document.getElementById("tipo");
+      const fecEl = document.getElementById("fecha-manual");
+
+      const conRaw = (conEl.value || '').trim();
+      const con = conRaw === '' ? null : conRaw.toUpperCase();
+      const monRaw = parseFloat(monEl.value);
+      const mon = isValidNumber(monRaw) ? monRaw : NaN;
+      const cat = catEl.value || 'Otro';
+      const tip = tipEl.value || 'gasto';
+      const ahoRaw = parseFloat(ahoEl.value);
+      const aho = isValidNumber(ahoRaw) ? ahoRaw : 0;
+      const fec = fecEl.value || new Date().toISOString().split('T')[0];
+
+     //  if (!con || !mon) return alert("Faltan datos");
+       
+      if (!con || isNaN(mon)) return alert("Faltan datos o monto inválido");
+
+      if (mon <= 0) {
+        if (tip === 'ingreso') return alert('El monto de ingreso debe ser mayor que 0');
+        // para gasto, monto > 0 aceptado (se guardará negativo internamente)
+      }
+
+      // COMPROBACIÓN DE SALDO ANTES DE GUARDAR
+      if (tip === "gasto") {
+        const saldoText = document.getElementById("total-mano").innerText.replace('$', '').replace(',', '');
+        const saldoActual = parseFloat(saldoText) || 0;
+        if (mon > saldoActual) {
+          if (!confirm(`⚠️ SALDO INSUFICIENTE\n\nTu saldo actual es $${saldoActual.toLocaleString()}.\nEstás intentando gastar $${mon.toLocaleString()}.\n\n¿Quieres registrar este gasto de todos modos?`)) return;
+        }
+      }
+
+      try {
+        const gastoProtegido = {
+            id: Date.now(),
+            con: con,
+            mon: encriptar(mon), // Aquí aplicamos la seguridad de Grok
+            usuario: localStorage.getItem("usuario_nombre")
+        };
+        
+        
+        const tx = db.transaction(["trans"], "readwrite");
+        tx.onerror = (e) => { console.error('Transacción error:', e); alert('Error al guardar'); };
+        const store = tx.objectStore("trans");
+        const obj = { concepto: con, monto: (tip === "gasto" ? -Math.abs(mon) : mon), ahorro: aho, categoria: cat, fecha: fec };
+        store.add(obj);
+        tx.oncomplete = () => {
+          monEl.value = ""; conEl.value = ""; ahoEl.value = ""; fecEl.value = "";
+          catEl.selectedIndex = 0;
+          actualizar();
+        };
+      } catch (err) {
+        console.error('Error al registrar:', err);
+        alert('No fue posible guardar la transacción.'+ err.message);
+      }
+    }
+
+    function actualizar() {
+      if(!db) return;
+      const tx = db.transaction("trans", "readonly");
+      const store = tx.objectStore("trans");
+      const req = store.getAll();
+      req.onsuccess = (e) => {
+        const data = e.target.result || [];
+        let tM = 0, tA = 0;
+        const q = (document.getElementById("buscador").value || '').toLowerCase();
+        const fD = document.getElementById("f-desde").value;
+        const fH = document.getElementById("f-hasta").value;
+        const fT = document.getElementById("f-tipo-mov").value;
+
+        metas.forEach(m => m.acumulado = 0);
+        data.forEach(t => {
+          if (t.concepto === "SALDO INICIAL") { tM += (t.monto || 0); tA += (t.ahorro || 0); }
+          else { tA += (t.ahorro || 0); tM += ((t.monto || 0) - (t.ahorro || 0)); }
+          metas.forEach(m => { if(t.categoria === m.nombre && t.monto < 0) m.acumulado += Math.abs(t.monto || 0); });
+        });
+
+        document.getElementById("total-mano").innerText = "$" + tM.toLocaleString();
+        document.getElementById("total-ahorro").innerText = "$" + tA.toLocaleString();
+
+        const filtered = data.filter(t => {
+          const concepto = (t.concepto || '').toString().toLowerCase();
+          const categoria = (t.categoria || '').toString().toLowerCase();
+          const mT = concepto.includes(q) || categoria.includes(q);
+          const mF = (fD ? t.fecha >= fD : true) && (fH ? t.fecha <= fH : true);
+          const mTi = fT === "ingreso" ? (t.monto > 0 || t.concepto === "SALDO INICIAL") : (fT === "gasto" ? t.monto < 0 : true);
+          return mT && mF && mTi;
+        });
+
+        const res = document.getElementById("contenedor-resumen");
+        if (q !== "" || fT !== "todos" || fD !== "" || fH !== "") {
+          res.style.display = "flex";
+          let sI = 0, sO = 0, sA = 0;
+          filtered.forEach(t => {
+            if (t.monto > 0 || t.concepto === "SALDO INICIAL") sI += (t.monto || 0); else sO += Math.abs(t.monto || 0);
+            sA += (t.ahorro || 0);
+          });
+          document.getElementById("resumen-in").innerText = "$" + sI.toLocaleString();
+          document.getElementById("resumen-out").innerText = "$" + sO.toLocaleString();
+          document.getElementById("resumen-aho").innerText = "$" + sA.toLocaleString();
+        } else res.style.display = "none";
+
+        renderMetas();
+        renderHistorial(filtered.slice().reverse());
+      };
+      req.onerror = (e) => console.error('Error al leer transacciones:', e);
+    }
+
+    function renderMetas() {
+      const div = document.getElementById("lista-metas"); div.innerHTML = "";
+      metas.forEach((m, i) => {
+        const por = m.total ? Math.min((m.acumulado / m.total) * 100, 100) : 0;
+        const fal = (m.total || 0) - (m.acumulado || 0);
+        const card = document.createElement('div');
+        card.className = 'card';
+        card.style.padding = '10px';
+        const header = document.createElement('div');
+        header.style.display = 'flex'; header.style.justifyContent = 'space-between'; header.style.fontSize = '12px';
+        header.appendChild(safeTextNode('strong', m.nombre || '—'));
+        header.appendChild(safeTextNode('span', por.toFixed(1) + '%'));
+        const progress = document.createElement('div'); progress.className = 'progreso-bar';
+        const fill = document.createElement('div'); fill.className = 'progreso-fill'; fill.style.width = por + '%';
+        progress.appendChild(fill);
+        const info = document.createElement('div'); info.style.display='flex'; info.style.justifyContent='space-between'; info.style.fontSize='10px';
+        const pagado = document.createElement('span'); pagado.style.color = 'var(--secondary)'; pagado.textContent = 'Pagado: $' + (m.acumulado || 0).toLocaleString();
+        const falta = document.createElement('span'); falta.style.color = 'var(--danger)'; falta.textContent = 'Falta: $' + (fal).toLocaleString();
+        info.appendChild(pagado); info.appendChild(falta);
+        const small = document.createElement('small'); small.style.fontSize='9px'; small.style.color='gray'; small.textContent = 'Meta: $' + (m.total || 0).toLocaleString();
+        const btn = document.createElement('button'); btn.textContent = 'borrar'; btn.style.float='right'; btn.style.color='red'; btn.style.border='none'; btn.style.background='none'; btn.style.fontSize='9px';
+        btn.onclick = () => borrarMeta(i);
+        card.appendChild(header); card.appendChild(progress); card.appendChild(info); card.appendChild(small); card.appendChild(btn);
+        div.appendChild(card);
+      });
+    }
+
+    function renderHistorial(data) {
+  const div = document.getElementById("historial-v13"); div.innerHTML = "";
+  data.forEach(t => {
+    const item = document.createElement('div'); item.className = 'item';
+    const left = document.createElement('div');
+    const b = document.createElement('b'); b.textContent = t.concepto || '';
+    const sm = document.createElement('small'); sm.textContent = (t.fecha || '') + ' | ' + (t.categoria || '');
+    left.appendChild(b); left.appendChild(document.createElement('br')); left.appendChild(sm);
+
+    const right = document.createElement('div'); right.style.textAlign = 'right';
+
+    // Determinar monto a mostrar y signo correctamente, incluyendo transferencias (monto === 0 && ahorro !== 0)
+    const montoVal = (t.monto !== undefined && t.monto !== null && t.monto !== 0) ? t.monto :
+                     ((t.ahorro !== undefined && t.ahorro !== null) ? t.ahorro : 0);
+    // Para mostrar siempre el valor absoluto
+    const displayAmount = Math.abs(montoVal || 0);
+
+    // Calcular si es ingreso (mostrar +) o gasto (mostrar -)
+    const esIngreso = (t.monto > 0) || (t.monto === 0 && t.ahorro > 0) || t.concepto === "SALDO INICIAL";
+
+    const span = document.createElement('span'); span.className = esIngreso ? 'ganancia' : 'gasto';
+    span.textContent = (esIngreso ? '+' : '-') + '$' + displayAmount.toLocaleString();
+
+    const br = document.createElement('br');
+    const del = document.createElement('button'); del.textContent = 'borrar'; del.style.fontSize='10px'; del.style.border='none'; del.style.background='none'; del.style.color='red';
+    del.onclick = () => borrar(t.id);
+
+    right.appendChild(span); right.appendChild(br); right.appendChild(del);
+    item.appendChild(left); item.appendChild(right);
+    div.appendChild(item);
+  });
+}
+
+
+    function actualizarSelectMetas() {
+      const g = document.getElementById("lista-categorias-metas"); g.innerHTML = "";
+      metas.forEach(m => { let o = document.createElement("option"); o.value = m.nombre; o.innerText = "Pago Meta: " + m.nombre; g.appendChild(o); });
+    }
+
+    function renderChart() {
+      if(!db) return;
+      const modo = document.getElementById("chart-tipo").value;
+      db.transaction("trans", "readonly").objectStore("trans").getAll().onsuccess = (e) => {
+        const results = e.target.result || [];
+        const grp = {};
+        results.forEach(t => {
+          if(modo === 'gastos' && (t.monto < 0)) {
+            const l = metas.some(m => m.nombre === t.categoria) ? t.categoria : t.concepto;
+            grp[l] = (grp[l] || 0) + Math.abs(t.monto || 0);
+          } else if (modo === 'ingresos' && t.monto > 0 && t.concepto !== "SALDO INICIAL") {
+            grp[t.concepto] = (grp[t.concepto] || 0) + (t.monto || 0);
+          }
+        });
+        const labels = Object.keys(grp);
+        const values = Object.values(grp);
+        const ctx = document.getElementById('chartGastos').getContext('2d');
+        if(chartInstance) chartInstance.destroy();
+        if(values.length === 0) {
+          document.getElementById('chart-empty').style.display = 'block';
+          document.getElementById('chartGastos').style.display = 'none';
+          return;
+        } else {
+          document.getElementById('chart-empty').style.display = 'none';
+          document.getElementById('chartGastos').style.display = 'block';
+        }
+        chartInstance = new Chart(ctx, { type: 'doughnut', data: { labels: labels, datasets: [{ data: values, backgroundColor: ['#1a73e8', '#2e7d32', '#f4b400', '#d32f2f', '#8e24aa', '#00acc1'] }] }, options: { plugins: { legend: { position: 'bottom', labels: { boxWidth: 10, font: { size: 9 } } } } } });
+      };
+    }
+
+    function crearMeta() {
+      const n = prompt("Nombre Meta:");
+      if (!n) return;
+      const t = prompt("Monto:");
+      const total = parseFloat(t);
+      if (!isValidNumber(total) || total <= 0) return alert('Monto inválido');
+      metas.push({ nombre: n.toUpperCase().trim(), total: total, acumulado: 0 });
+      localStorage.setItem(METAS_KEY, JSON.stringify(metas));
+      actualizarSelectMetas();
+      actualizar();
+    }
+
+    function configInicial() {
+      if(!db) return alert('Base de datos no disponible');
+      const m = prompt("Efectivo:");
+      const a = prompt("Ahorro:");
+      const mv = parseFloat(m), av = parseFloat(a);
+      if (!isValidNumber(mv) || !isValidNumber(av)) return alert('Valores inválidos');
+      const tx = db.transaction(["trans"], "readwrite");
+      tx.objectStore("trans").add({ concepto: "SALDO INICIAL", monto: mv, ahorro: av, categoria: "Inicial", fecha: new Date().toISOString().split('T')[0] });
+      tx.oncomplete = () => actualizar();
+      tx.onerror = (e) => console.error('Error al crear saldo inicial:', e);
+    }
+
+    function moverDinero(dir) {
+      if(!db) return alert('Base de datos no disponible');
+      const m = parseFloat(prompt("¿Monto?"));
+      if (!isValidNumber(m) || m <= 0) return alert('Monto inválido');
+      const tx = db.transaction(["trans"], "readwrite");
+      const obj = { concepto: (dir === 'ahorro_a_mano' ? "RETIRO" : "INVERSIÓN"), monto: 0, ahorro: (dir === 'ahorro_a_mano' ? -m : m), categoria: "Transf", fecha: new Date().toISOString().split('T')[0] };
+      tx.objectStore("trans").add(obj);
+      tx.oncomplete = () => actualizar();
+      tx.onerror = (e) => console.error('Error mover dinero:', e);
+    }
+
+    function borrar(id) {
+      if (!id && id !== 0) return;
+      if(!db) return alert('Base de datos no disponible');
+      if(confirm("¿Eliminar?")) {
+        const tx = db.transaction(["trans"], "readwrite");
+        tx.objectStore("trans").delete(id).onsuccess = () => actualizar();
+        tx.onerror = (e) => console.error('Error borrar:', e);
+      }
+    }
+
+    function borrarMeta(i) {
+      if(confirm("¿Eliminar meta?")) {
+        metas.splice(i, 1);
+        localStorage.setItem(METAS_KEY, JSON.stringify(metas));
+        actualizarSelectMetas();
+        actualizar();
+      }
+    }
+
+    function reinicioTotal() {
+      if (!confirm("¿BORRAR TODO?")) return;
+      localStorage.removeItem(METAS_KEY);
+      if (db) {
+        db.close();
+        const delReq = indexedDB.deleteDatabase(DB_NAME);
+        delReq.onsuccess = () => location.reload();
+        delReq.onerror = (e) => { console.error('Error borrar DB:', e); alert('No se pudo borrar la base de datos.'); };
+      } else location.reload();
+    }
+
+    function exportarCSV() {
+      if(!db) return alert('Base de datos no disponible');
+      db.transaction("trans", "readonly").objectStore("trans").getAll().onsuccess = (e) => {
+        const rows = e.target.result || [];
+        let csv = "Fecha,Concepto,Categoria,Monto,Ahorro\n";
+        rows.forEach(t => {
+          csv += [
+            escCSVField(t.fecha),
+            escCSVField(t.concepto),
+            escCSVField(t.categoria),
+            escCSVField(t.monto),
+            escCSVField(t.ahorro)
+          ].join(',') + '\n';
+        });
+        const a = document.createElement('a');
+        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+        a.href = URL.createObjectURL(blob);
+        a.download = 'Finanzas_Abel.csv';
+        a.style.display = 'none';
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+      };
+    }
+    
+    
+  </script>
+</body>
+<script>
+    // 1. Configuración de seguridad (Usamos la llave del login)
+    const LLAVE = localStorage.getItem("familia_llave") || "secreto";
+
+    function encriptar(dato) {
+        return CryptoJS.AES.encrypt(dato.toString(), LLAVE).toString();
+    }
+
+    function desencriptar(codigo) {
+        try {
+            const bytes = CryptoJS.AES.decrypt(codigo, LLAVE);
+            return bytes.toString(CryptoJS.enc.Utf8);
+        } catch (e) { return "0"; }
+    }
+
+    // 2. Control del Login (Se activa solo si no hay usuario)
+    document.addEventListener("DOMContentLoaded", () => {
+        const modal = document.getElementById('loginModal');
+        if (!localStorage.getItem("usuario_nombre") && modal) {
+            modal.showModal();
+        }
+    });
+
+    function guardarLogin() {
+        const nombre = document.getElementById('nombreInput').value;
+        const llave = document.getElementById('llaveInput').value;
+        if (nombre && llave) {
+            localStorage.setItem("usuario_nombre", nombre);
+            localStorage.setItem("familia_llave", llave);
+            location.reload();
+        }
+    }
+
+    // 3. Tu nueva función de Registro (Protegida)
+    async function registrarGasto() {
+        const concepto = document.getElementById("concepto").value.toUpperCase();
+        const monto = document.getElementById("monto").value;
+
+        if (!concepto || !monto) return alert("Faltan datos");
+
+        const gastoProtegido = {
+            id: Date.now(),
+            concepto: concepto,
+            monto: encriptar(monto), // Aquí aplicamos la seguridad de Grok
+            usuario: localStorage.getItem("usuario_nombre")
+        };
+
+        console.log("Guardado con éxito:", gastoProtegido);
+        // Aquí puedes añadir tu lógica de Firebase si ya la tenías
+        alert("Gasto guardado y encriptado");
+    }
+</script>
+
+</html>
