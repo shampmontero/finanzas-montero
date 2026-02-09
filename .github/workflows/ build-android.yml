@@ -44,9 +44,10 @@ jobs:
           # Esto generará el APK
           cordova build android --release
 
-      - name: Subir APK como Artefacto
+            - name: Subir APK como Artefacto
         uses: actions/upload-artifact@v4
         with:
           name: Finanzas-Abel-APK
-          path: app/platforms/android/app/build/outputs/apk/release/*.apk
+          # Esta ruta buscará en ambas carpetas (release y debug)
+          path: app/platforms/android/app/build/outputs/apk/**/*.apk
           if-no-files-found: error
