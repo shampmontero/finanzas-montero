@@ -2,7 +2,7 @@ name: Build Android APK
 
 on:
   push:
-    branches: [ main ]
+    branches: [ main, master ]
   workflow_dispatch:
 
 jobs:
@@ -25,29 +25,24 @@ jobs:
       - name: Instalar Cordova y preparar proyecto
         run: |
           npm install -g cordova
-          # USAMOS TU NOMBRE Y TU ID AQUÍ:
           cordova create app com.abelmontero.finanzas "Finanzas_Abel"
-          
-          # Copiar tus archivos
           cp index.html app/www/
           cp style.css app/www/
           cp manifest.json app/www/
           cp sw.js app/www/
           cp config.xml app/
-          
           cd app
           cordova platform add android@latest
 
-      - name: Build APK (Debug)
+      - name: Build APK
         run: |
           cd app
-          # Esto generará el APK
-          cordova build android --release
+          cordova build android
 
-            - name: Subir APK como Artefacto
+      - name: Subir APK
         uses: actions/upload-artifact@v4
         with:
           name: Finanzas-Abel-APK
-          # Esta ruta buscará en ambas carpetas (release y debug)
-          path: app/platforms/android/app/build/outputs/apk/**/*.apk
+          # Esta ruta es infalible: busca cualquier APK en cualquier carpeta
+          path: "**/*.apk"
           if-no-files-found: error
