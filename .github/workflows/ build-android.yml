@@ -48,5 +48,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: Finanzas-Abel-APK
-          # La ruta suele ser estándar, pero el nombre del archivo interno cambia
           path: app/platforms/android/app/build/outputs/apk/release/*.apk
+          if-no-files-found: error
