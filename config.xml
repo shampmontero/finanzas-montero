@@ -1,13 +1,16 @@
 <?xml version='1.0' encoding='utf-8'?>
-<widget id="com.tuusuario.myapp" version="1.0.0">
-    <name>Mi App</name>
-    <description>Aplicación creada desde archivos web</description>
-    <author email="tu@email.com">Tu Nombre</author>
+<widget id="com.abelmontero.finanzas" version="1.0.0" xmlns="http://www.w3.org/ns/widgets" xmlns:cdv="http://cordova.apache.org/ns/1.0">
+    <name>Finanzas_Abel</name>
+    <description>Aplicación de gestión financiera de Abel Montero</description>
+    <author email="shampmontero@gmail.com" href="https://github.com/shampmontero">
+        Abel Montero
+    </author>
     <content src="index.html" />
     <access origin="*" />
     <allow-intent href="http://*/*" />
     <allow-intent href="https://*/*" />
     <platform name="android">
         <allow-intent href="market:*" />
+        <preference name="KeepRunning" value="true" />
     </platform>
 </widget>
