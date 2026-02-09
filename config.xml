@@ -9,8 +9,11 @@
     <access origin="*" />
     <allow-intent href="http://*/*" />
     <allow-intent href="https://*/*" />
+    
     <platform name="android">
         <allow-intent href="market:*" />
         <preference name="KeepRunning" value="true" />
+        <preference name="Scheme" value="https" />
+        <preference name="Hostname" value="localhost" />
     </platform>
 </widget>
