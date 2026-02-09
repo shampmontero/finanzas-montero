@@ -25,16 +25,14 @@ jobs:
       - name: Instalar Cordova y preparar proyecto
         run: |
           npm install -g cordova
-          # Crea el contenedor de la app
-          cordova create app com.miusuario.myapp "MiApp"
+          # USAMOS TU NOMBRE Y TU ID AQUÍ:
+          cordova create app com.abelmontero.finanzas "Finanzas_Abel"
           
-          # Copia tus archivos web a la carpeta de Cordova
+          # Copiar tus archivos
           cp index.html app/www/
           cp style.css app/www/
           cp manifest.json app/www/
           cp sw.js app/www/
-          
-          # Copia el config.xml que debes crear en la raíz
           cp config.xml app/
           
           cd app
@@ -43,10 +41,12 @@ jobs:
       - name: Build APK (Debug)
         run: |
           cd app
+          # Esto generará el APK
           cordova build android --release
 
       - name: Subir APK como Artefacto
         uses: actions/upload-artifact@v4
         with:
-          name: app-release-apk
+          name: Finanzas-Abel-APK
+          # La ruta suele ser estándar, pero el nombre del archivo interno cambia
           path: app/platforms/android/app/build/outputs/apk/release/*.apk
